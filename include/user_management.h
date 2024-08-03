@@ -53,8 +53,10 @@ private:
     NoSQLHandler& nosqlHandler;
     #endif
 
-    void cacheUser(const User& user);
     RedisHandler& redisHandler;
+    void cacheUser(const std::string& userId, const std::string& userData);
+    std::string getCachedUser(const std::string& userId);
+
 };
 
 #endif // USER_MANAGEMENT_H

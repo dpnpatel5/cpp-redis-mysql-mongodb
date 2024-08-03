@@ -16,7 +16,7 @@ void UserManagement::createUser(const User& user) {
     #elif defined(USE_NOSQL)
     createUserInNoSQL(user);
     #endif
-    storeUserInRedis(user);
+    cacheUser(std::to_string(user.id), user.name);
 }
 
 void UserManagement::deleteUser(int userId) {
@@ -25,7 +25,7 @@ void UserManagement::deleteUser(int userId) {
     #elif defined(USE_NOSQL)
     deleteUserInNoSQL(userId);
     #endif
-    updateUserInRedis(user);
+    redisHandler.set(std::to_string(userId), "");
 }
 
 void UserManagement::updateUser(const User& user) {
@@ -34,7 +34,7 @@ void UserManagement::updateUser(const User& user) {
     #elif defined(USE_NOSQL)
     updateUserInNoSQL(user);
     #endif
-    deleteUserFromRedis(userId);
+    cacheUser(std::to_string(user.id), user.name);
 }
 
 #ifdef USE_MYSQL
@@ -116,55 +116,10 @@ void UserManagement::updateUserInNoSQL(const User& user) {
     }
 }
 #endif
-
-void UserManagement::storeUserInRedis(const User& user) {
-    try {
-        std::string userKey = "user:" + std::to_string(user.id);
-        redisHandler.hset(userKey, "name", user.name);
-        redisHandler.hset(userKey, "age", std::to_string(user.age));
-        redisHandler.hset(userKey, "gender", user.gender);
-    } catch (const std::exception& e) {
-        throw std::runtime_error("Error storing user in Redis: " + std::string(e.what()));
-    }
+void UserManagement::cacheUser(const std::string& userId, const std::string& userData) {
+    redisHandler.set(userId, userData);
 }
 
-User UserManagement::retrieveUserFromRedis(int userId) {
-    try {
-        std::string userKey = "user:" + std::to_string(userId);
-        std::string name = redisHandler.hget(userKey, "name");
-        std::string ageStr = redisHandler.hget(userKey, "age");
-        std::string gender = redisHandler.hget(userKey, "gender");
-
-        if (name.empty() || ageStr.empty() || gender.empty()) {
-            throw std::runtime_error("User data not found in Redis");
-        }
-
-        int age = std::stoi(ageStr);
-        return User{userId, name, age, gender};
-    } catch (const std::exception& e) {
-        throw std::runtime_error("Error retrieving user from Redis: " + std::string(e.what()));
-    }
+std::string UserManagement::getCachedUser(const std::string& userId) {
+    return redisHandler.get(userId);
 }
-
-void UserManagement::updateUserInRedis(const User& user) {
-    try {
-        std::string userKey = "user:" + std::to_string(user.id);
-        redisHandler.hset(userKey, "name", user.name);
-        redisHandler.hset(userKey, "age", std::to_string(user.age));
-        redisHandler.hset(userKey, "gender", user.gender);
-    } catch (const std::exception& e) {
-        throw std::runtime_error("Error updating user in Redis: " + std::string(e.what()));
-    }
-}
-
-void UserManagement::deleteUserFromRedis(int userId) {
-    try {
-        std::string userKey = "user:" + std::to_string(userId);
-        redisHandler.client.del({userKey});
-        redisHandler.client.sync_commit();
-    } catch (const std::exception& e) {
-        throw std::runtime_error("Error deleting user from Redis: " + std::string(e.what()));
-    }
-}
-
-
