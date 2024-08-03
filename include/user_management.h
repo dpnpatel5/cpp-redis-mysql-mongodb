@@ -54,8 +54,9 @@ private:
     #endif
 
     RedisHandler& redisHandler;
-    void cacheUser(const std::string& userId, const std::string& userData);
-    std::string getCachedUser(const std::string& userId);
+    void cacheUser(const User& user); 
+    User getCachedUser(const std::string& userId);
+
 
 };
 

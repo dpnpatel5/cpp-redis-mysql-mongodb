@@ -32,6 +32,7 @@ find_package(mongocxx REQUIRED)
 include_directories(/usr/local/include/mongocxx/v_noabi)
 include_directories(/usr/local/include/bsoncxx/v_noabi)
 include_directories(/usr/local/include/bsoncxx/v_noabi/bsoncxx/third_party/mnmlstc)
+include_directories(/usr/include/jsoncpp)
 
 # Add source files
 set(SOURCES
@@ -65,6 +66,7 @@ target_link_libraries(my_app
     hiredis
     mongocxx
     bsoncxx
+    jsoncpp
 )
 
 # Optionally, include debugging information

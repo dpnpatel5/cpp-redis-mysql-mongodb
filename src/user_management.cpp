@@ -1,6 +1,8 @@
 #include "user_management.h"
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
+#include <json/json.h>
 
 #ifdef USE_MYSQL
 UserManagement::UserManagement(RDBMSHandler& rdbms, RedisHandler& redis)
@@ -16,7 +18,7 @@ void UserManagement::createUser(const User& user) {
     #elif defined(USE_NOSQL)
     createUserInNoSQL(user);
     #endif
-    cacheUser(std::to_string(user.id), user.name);
+    cacheUser(user);
 }
 
 void UserManagement::deleteUser(int userId) {
@@ -34,7 +36,7 @@ void UserManagement::updateUser(const User& user) {
     #elif defined(USE_NOSQL)
     updateUserInNoSQL(user);
     #endif
-    cacheUser(std::to_string(user.id), user.name);
+    cacheUser(user);
 }
 
 #ifdef USE_MYSQL
@@ -116,10 +118,36 @@ void UserManagement::updateUserInNoSQL(const User& user) {
     }
 }
 #endif
-void UserManagement::cacheUser(const std::string& userId, const std::string& userData) {
-    redisHandler.set(userId, userData);
+void UserManagement::cacheUser(const User& user) {
+    Json::Value root;
+    root["id"] = user.id;
+    root["name"] = user.name;
+    root["age"] = user.age;
+    root["gender"] = user.gender;
+
+    Json::StreamWriterBuilder writer;
+    std::string jsonData = Json::writeString(writer, root);
+
+    redisHandler.set(std::to_string(user.id), jsonData);
 }
 
-std::string UserManagement::getCachedUser(const std::string& userId) {
-    return redisHandler.get(userId);
+User UserManagement::getCachedUser(const std::string& userId) {
+    std::string jsonData = redisHandler.get(userId);
+    User user;
+
+    Json::CharReaderBuilder reader;
+    Json::Value root;
+    std::istringstream s(jsonData);
+    std::string errs;
+
+    if (Json::parseFromStream(reader, s, &root, &errs)) {
+        user.id = root["id"].asInt();
+        user.name = root["name"].asString();
+        user.age = root["age"].asInt();
+        user.gender = root["gender"].asString();
+    } else {
+        std::cerr << "Failed to parse JSON: " << errs << std::endl;
+    }
+
+    return user;
 }
